@@ -27,6 +27,9 @@ log.info """\
 if (params.index_genome) {
     include { indexGenome } from './modules/indexGenome'
 }
+if (params.trimmomatic) {
+    include { trimmomatic } from './modules/trimmomatic'
+}
 if (params.fastqc) {
     include { FASTQC } from './modules/FASTQC'
 }
@@ -249,11 +252,17 @@ workflow FASTQC_only {
         }
     read_pairs_ch.view()
 
+    // run trimmomatic on read pairs. 
+    // Trim_ch = read_pairs_ch (untrimmed version) if trimmomatic excluded from pipeline in config
+    trim_ch = params.trimmomatic ? trimmomatic(read_pairs_ch) : read_pairs_ch
+
+    // Run FASTQC on read pairs
     if (params.fastqc) {
-        FASTQC(read_pairs_ch)
+        FASTQC(trim_ch)
     }
-}
 
 workflow.onComplete {
     log.info ( workflow.success ? "\nworkflow is done!\n" : "Oops .. something went wrong" )
+}
+
 }

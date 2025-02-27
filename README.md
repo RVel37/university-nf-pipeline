@@ -83,8 +83,19 @@ $ nextflow run -profile docker main.nf
 
 # Using docker in singularity
 $ nextflow run -profile singularity main.nf
+
+## removing logs
+find . -type f -name "*.log" -delete
+
+# running fastqc only
+nextflow run main.nf -profile docker -entry FASTQC_only --fastqc true --genome "/mnt/c/Users/velis/Coding-tutorials/nf-training/university-nf-pipeline/data/genome/Homo_sapiens_assembly38.fasta"
+
+
 ```
 Note: Refer to the nexrflow.config and nextflow_schema.json for parameter selection. 
+
+## indexing genome (do ONCE)
+nextflow run main.nf -profile docker --index_genome true --genome_file /mnt/c/Users/velis/Coding-tutorials/nf-training/university-nf-pipeline/data/genome/Homo_sapiens_assembly38.fasta 
 
 ## Validating the pipeline
 See [https://genomics.viapath.co.uk/benchmark](https://genomics.viapath.co.uk/benchmark)

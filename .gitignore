@@ -1,0 +1,8 @@
+.nextflow.log*
+.nextflow*
+work
+results
+qsr_vcfs/
+genome/
+dockerfiles/
+data/
