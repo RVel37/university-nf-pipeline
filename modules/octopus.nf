@@ -1,46 +1,56 @@
 nextflow.enable.dsl = 2
 
-nextflow.trace.enable = true
-
 process octopus {
-    if params.platform == 'local' {
+    if (params.platform == 'local') {
         label 'process_low'
-    } else if params.platform == 'cloud' {
+    } else if (params.platform == 'cloud') {
         label 'process_high'
     }
+
     container 'dancooke/octopus:invitae--eae1ab48_0'
 
     tag "$bamFile"
+
     input:
-    tuple val(sample_id), file(bamFile), file(bamIndex), path indexFiles
+    tuple val(sample_id), file(bamFile), file(bamIndex)
+    path indexFiles
 
     output:
-    tuple val(sample_id), file("*.vcf"), file("*.vcf.idx")
+    tuple val(sample_id), file("*.vcf*"), file("*.vcf.idx*")
 
     script:
     """
     echo "Running Octopus for Sample: ${bamFile}"
 
+    # Ensure genome fasta file is properly located
     if [[ -n ${params.genome_file} ]]; then
         genomeFasta=\$(basename ${params.genome_file})
     else
-        genomeFasta=\$(find -L . -name '*.fasta')
+        genomeFasta=\$(find -L . -name '*.fasta' | head -n 1)
     fi
 
     echo "Genome File: \${genomeFasta}"
 
-    # Rename the dictionary file to the expected name if it exists
+    # Check if the dictionary file exists and rename it if needed
     if [[ -e "\${genomeFasta}.dict" ]]; then
         mv "\${genomeFasta}.dict" "\${genomeFasta%.*}.dict"
     fi
 
-    outputVcf="\$(basename ${bamFile} _sorted_dedup_recalibrated.bam).vcf"
+    # Create output VCF filename based on BAM input
+    outputVcf="\$(basename ${bamFile} .bam).vcf"
 
-    ### RUN OCTOPUS ###
-    octopus \
-        --reference \${genomeFasta} \
-        --reads ${bamFile} \
-        --output \${outputVcf} \
+    echo "Output VCF will be: \${outputVcf}"
         
+    ### RUN OCTOPUS ###
+
+    echo "Executing Octopus with BAM file: \${bamFile}"
+octopus \
+--working-directory . \
+--reads \${bamFile} \
+--reference "\${genomeFasta}" \
+--output \${outputVcf}
+
+    echo "Octopus completed for sample: \${sample_id}"
+       
     """
-}
+} 

@@ -144,7 +144,7 @@ workflow {
         bqsr_ch = mapDamage_ch
     }
 
-    // Run HaplotypeCaller on BQSR files
+    // Run variant calling on BQSR files
     if (params.variant_caller == "haplotype-caller") {
         gvcf_ch = haplotypeCaller(bqsr_ch, indexed_genome_ch.collect()).collect()
     }
