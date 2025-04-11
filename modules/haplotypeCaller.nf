@@ -7,7 +7,7 @@ process haplotypeCaller {
     } else if (params.platform == 'cloud') {
         label 'process_high'
     }
-    container 'variantvalidator/gatk4:4.3.0.0'
+    container 'staphb/freebayes:1.3.8'
 
     tag "$bamFile"
 
@@ -16,13 +16,14 @@ process haplotypeCaller {
     path indexFiles
 
     output:
-    tuple val(sample_id), file("*.vcf"), file("*.vcf.idx")
+    tuple val(sample_id), file("${sample_id}*.vcf")
 
     script:
     """
     echo "Running HaplotypeCaller for Sample: ${bamFile}"
+    echo "no actually we're running freebayes I just inserted it here to test the pipeline"
 
-    if [[ -n ${params.genome_file} ]]; then
+   if [[ -n ${params.genome_file} ]]; then
         genomeFasta=\$(basename ${params.genome_file})
     else
         genomeFasta=\$(find -L . -name '*.fasta')
@@ -37,18 +38,32 @@ process haplotypeCaller {
 
     outputVcf="\$(basename ${bamFile} _sorted_dedup_recalibrated.bam).vcf"
 
-    # Use GATK HaplotypeCaller to call variants in gVCF mode with specified annotations
-    gatk HaplotypeCaller -R "\${genomeFasta}" -I ${bamFile} -O "\${outputVcf}" -ERC GVCF \
-        -A BaseQuality -A DepthPerSampleHC -A MappingQuality -A QualByDepth \
-        -A MappingQualityRankSumTest -A ReadPosRankSumTest -A FisherStrand -A StrandOddsRatio \
-        -A MappingQualityZero -A InbreedingCoeff -A BaseQualityRankSumTest -A HaplotypeFilteringAnnotation
+
+    freebayes \
+        -f "\${genomeFasta}" \
+        "${bamFile}" > \${outputVcf} 
 
     echo "Sample: ${sample_id} VCF: \${outputVcf}"
+    """
+}
 
-    # Index the VCF file
-    gatk IndexFeatureFile -I \${outputVcf}
 
-    echo "Variant Calling for Sample: ${sample_id} Complete"
+process gatkIndexer {
+    container 'vortexing/gatk-samtools-bcftools:4.1.8.0-1.10-1.9'
+    
+    input: 
+    tuple val(sample_id), file(vcfFile)
+
+    output:
+    tuple val(sample_id), file(vcfFile), file("${vcfFile}.idx")
+
+    script:
+    """
+    # Remove MNPs using bcftools and overwrite the original VCF file
+    bcftools view --exclude-types mnps ${vcfFile} -o ${vcfFile}
+
+    # INDEXING
+    gatk IndexFeatureFile -I "${vcfFile}"
     """
 }
 

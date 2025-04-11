@@ -57,11 +57,12 @@ if (params.aligner == 'bwa-mem') {
     error "Unsupported aligner: ${params.aligner}. Please specify 'bwa-mem' or 'bwa-aln'."
 }
 if (params.variant_caller == 'haplotype-caller') {
-    include { haplotypeCaller } from './modules/haplotypeCaller' 
+    include { haplotypeCaller } from './modules/haplotypeCaller'
+    include { gatkIndexer } from './modules/haplotypeCaller'
 } else if (params.variant_caller == 'octopus') {
     include { octopus } from './modules/octopus'
 } else {
-    error "Unsupported variant caller: ${params.variant_caller}. Please specify 'haplotype-caller' or 'octopus'."
+    error "Unsupported variant caller: ${params.variant_caller}. Please specify 'haplotype-caller'."
 }
 
 if (params.degraded_dna) {
@@ -146,11 +147,11 @@ workflow {
 
     // Run variant calling on BQSR files
     if (params.variant_caller == "haplotype-caller") {
-        gvcf_ch = haplotypeCaller(bqsr_ch, indexed_genome_ch.collect()).collect()
+        freebayes_ch = haplotypeCaller(bqsr_ch, indexed_genome_ch.collect()).collect()
     }
-    else if (params.variant_caller == "octopus") {
-        gvcf_ch = octopus(bqsr_ch, indexed_genome_ch.collect()).collect()
-    }
+    
+    // Pass the output VCF files from FreeBayes to GATK for indexing
+    gvcf_ch = gatkIndexer(freebayes_ch)
 
     // Now we map to create separate lists for sample IDs, VCF files, and index files
     all_gvcf_ch = gvcf_ch
